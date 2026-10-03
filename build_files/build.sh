@@ -33,7 +33,7 @@ for d in /var/opt/*; do
   [ -e "$d" ] || continue
   name=$(basename "$d")
   mv "$d" "/usr/lib/opt/$name"
-  echo "L+ \"/var/opt/$name\" - - - - \"/usr/lib/opt/$name\"" >>/usr/lib/tmpfiles.d/optfix.conf
+  echo "L+ \"/var/opt/$name\" - - - - /usr/lib/opt/$name" >>/usr/lib/tmpfiles.d/optfix.conf
 done
 
 # 1Password: pin the group GID so the browser helper keeps its setgid group
