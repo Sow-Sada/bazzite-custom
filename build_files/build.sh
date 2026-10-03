@@ -26,8 +26,7 @@ curl -fsSL https://repository.mullvad.net/rpm/stable/mullvad.repo -o /etc/yum.re
 # /opt -> /var/opt on atomic images; make it exist for RPM scriptlets
 mkdir -p /var/opt
 
-dnf5 install -y kitty firefox-nightly 1password mullvad-vpn
-
+dnf5 install -y kitty firefox-nightly 1password 1password-cli mullvad-vpn ripgrep
 # Move /opt payloads into the immutable image, link them back at boot
 mkdir -p /usr/lib/opt
 for d in /var/opt/*; do
@@ -42,5 +41,10 @@ groupmod -g 1500 onepassword
 echo "g onepassword 1500" >/usr/lib/sysusers.d/onepassword.conf
 chgrp 1500 /usr/lib/opt/1Password/1Password-BrowserSupport
 chmod 2755 /usr/lib/opt/1Password/1Password-BrowserSupport
+
+groupmod -g 1600 onepassword-cli
+echo "g onepassword-cli 1600" >/usr/lib/sysusers.d/onepassword-cli.conf
+chgrp 1600 /usr/bin/op
+chmod 2755 /usr/bin/op
 
 systemctl enable mullvad-daemon
