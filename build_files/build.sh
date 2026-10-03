@@ -1,27 +1,46 @@
 #!/bin/bash
-
 set -ouex pipefail
 
-# Copy the contents of system_files/ of the git repo to /
-cp -avf "/ctx/system_files"/. /
+cat >/etc/yum.repos.d/mozilla.repo <<'EOF'
+[mozilla]
+name=Mozilla Packages
+baseurl=https://packages.mozilla.org/rpm/firefox
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.mozilla.org/rpm/firefox/signing-key.gpg
+EOF
 
-### Install packages
+cat >/etc/yum.repos.d/1password.repo <<'EOF'
+[1password]
+name=1Password Stable Channel
+baseurl=https://downloads.1password.com/linux/rpm/stable/$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://downloads.1password.com/linux/keys/1password.asc
+EOF
 
-# Packages can be installed from any enabled yum repo on the image.
-# RPMfusion repos are available by default in ublue main images
-# List of rpmfusion packages can be found here:
-# https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/43/x86_64/repoview/index.html&protocol=https&redirect=1
+curl -fsSL https://repository.mullvad.net/rpm/stable/mullvad.repo -o /etc/yum.repos.d/mullvad.repo
 
-# this installs a package from fedora repos
-dnf5 install -y tmux
+# /opt -> /var/opt on atomic images; make it exist for RPM scriptlets
+mkdir -p /var/opt
 
-# Use a COPR Example:
-#
-# dnf5 -y copr enable ublue-os/staging
-# dnf5 -y install package
-# Disable COPRs so they don't end up enabled on the final image:
-# dnf5 -y copr disable ublue-os/staging
+dnf5 install -y kitty firefox-nightly 1password mullvad-vpn
 
-#### Example for enabling a System Unit File
+# Move /opt payloads into the immutable image, link them back at boot
+mkdir -p /usr/lib/opt
+for d in /var/opt/*; do
+  [ -e "$d" ] || continue
+  name=$(basename "$d")
+  mv "$d" "/usr/lib/opt/$name"
+  echo "L+ \"/var/opt/$name\" - - - - \"/usr/lib/opt/$name\"" >>/usr/lib/tmpfiles.d/optfix.conf
+done
 
-systemctl enable podman.socket
+# 1Password: pin the group GID so the browser helper keeps its setgid group
+groupmod -g 1500 onepassword
+echo "g onepassword 1500" >/usr/lib/sysusers.d/onepassword.conf
+chgrp 1500 /usr/lib/opt/1Password/1Password-BrowserSupport
+chmod 2755 /usr/lib/opt/1Password/1Password-BrowserSupport
+
+systemctl enable mullvad-daemon
